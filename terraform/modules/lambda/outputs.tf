@@ -13,3 +13,7 @@ output "query_lambda_name" {
 output "query_lambda_arn" {
   value = aws_lambda_function.query.arn
 }
+
+output "query_lambda_invoke_arn" {
+  value = aws_lambda_function.query.invoke_arn
+}

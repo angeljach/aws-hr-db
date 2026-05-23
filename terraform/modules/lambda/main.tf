@@ -46,6 +46,19 @@ resource "aws_iam_role_policy" "lambda_policy" {
   })
 }
 
+# Package Lambda binaries as ZIP for deployment
+data "archive_file" "extract" {
+  type        = "zip"
+  source_file = "${path.module}/../../../lambda/extract_encrypt/bootstrap"
+  output_path = "${path.module}/../../../lambda/extract_encrypt/bootstrap.zip"
+}
+
+data "archive_file" "query" {
+  type        = "zip"
+  source_file = "${path.module}/../../../lambda/query_decrypt/bootstrap"
+  output_path = "${path.module}/../../../lambda/query_decrypt/bootstrap.zip"
+}
+
 # CloudWatch Log Group for Extract Lambda
 resource "aws_cloudwatch_log_group" "extract_lambda" {
   name              = "/aws/lambda/${var.project_name}-extract"
@@ -60,13 +73,14 @@ resource "aws_cloudwatch_log_group" "query_lambda" {
 
 # Lambda Extract & Encrypt
 resource "aws_lambda_function" "extract" {
-  filename      = "${path.module}/../../lambda/extract_encrypt/bootstrap"
-  function_name = "${var.project_name}-extract"
-  role          = aws_iam_role.lambda_role.arn
-  handler       = "bootstrap"
-  runtime       = var.lambda_runtime
-  timeout       = 60
-  memory_size   = 256
+  filename         = data.archive_file.extract.output_path
+  source_code_hash = data.archive_file.extract.output_base64sha256
+  function_name    = "${var.project_name}-extract"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "bootstrap"
+  runtime          = var.lambda_runtime
+  timeout          = 60
+  memory_size      = 256
 
   vpc_config {
     subnet_ids         = var.private_subnet_ids
@@ -80,8 +94,7 @@ resource "aws_lambda_function" "extract" {
       DB_NAME         = var.db_name
       DB_USER         = var.db_user
       DB_PASSWORD     = var.db_password
-      ENCRYPTION_KEY  = var.encryption_key
-      AWS_REGION      = data.aws_region.current.name
+      ENCRYPTION_KEY = var.encryption_key
     }
   }
 
@@ -93,13 +106,14 @@ resource "aws_lambda_function" "extract" {
 
 # Lambda Query & Decrypt
 resource "aws_lambda_function" "query" {
-  filename      = "${path.module}/../../lambda/query_decrypt/bootstrap"
-  function_name = "${var.project_name}-query"
-  role          = aws_iam_role.lambda_role.arn
-  handler       = "bootstrap"
-  runtime       = var.lambda_runtime
-  timeout       = 30
-  memory_size   = 256
+  filename         = data.archive_file.query.output_path
+  source_code_hash = data.archive_file.query.output_base64sha256
+  function_name    = "${var.project_name}-query"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "bootstrap"
+  runtime          = var.lambda_runtime
+  timeout          = 30
+  memory_size      = 256
 
   vpc_config {
     subnet_ids         = var.private_subnet_ids
@@ -113,8 +127,7 @@ resource "aws_lambda_function" "query" {
       DB_NAME         = var.db_name
       DB_USER         = var.db_user
       DB_PASSWORD     = var.db_password
-      ENCRYPTION_KEY  = var.encryption_key
-      AWS_REGION      = data.aws_region.current.name
+      ENCRYPTION_KEY = var.encryption_key
     }
   }
 

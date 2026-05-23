@@ -10,6 +10,10 @@ variable "query_lambda_arn" {
   type = string
 }
 
+variable "query_lambda_invoke_arn" {
+  type = string
+}
+
 variable "query_lambda_name" {
   type = string
 }

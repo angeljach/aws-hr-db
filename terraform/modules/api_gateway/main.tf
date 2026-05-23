@@ -22,7 +22,7 @@ resource "aws_api_gateway_method" "get_employees" {
   rest_api_id      = aws_api_gateway_rest_api.main.id
   resource_id      = aws_api_gateway_resource.employees.id
   http_method      = "GET"
-  authorization    = "CUSTOM"
+  authorization    = "COGNITO_USER_POOLS"
   authorizer_id    = aws_api_gateway_authorizer.cognito.id
   request_parameters = {
     "method.request.querystring.page"  = false
@@ -35,7 +35,7 @@ resource "aws_api_gateway_method" "get_employee" {
   rest_api_id      = aws_api_gateway_rest_api.main.id
   resource_id      = aws_api_gateway_resource.employee_id.id
   http_method      = "GET"
-  authorization    = "CUSTOM"
+  authorization    = "COGNITO_USER_POOLS"
   authorizer_id    = aws_api_gateway_authorizer.cognito.id
   request_parameters = {
     "method.request.path.id" = true
@@ -49,7 +49,7 @@ resource "aws_api_gateway_integration" "employees_lambda" {
   http_method      = aws_api_gateway_method.get_employees.http_method
   type             = "AWS_PROXY"
   integration_http_method = "POST"
-  uri              = var.query_lambda_arn
+  uri              = var.query_lambda_invoke_arn
 }
 
 # Lambda integration for GET /employees/{id}
@@ -59,7 +59,7 @@ resource "aws_api_gateway_integration" "employee_lambda" {
   http_method      = aws_api_gateway_method.get_employee.http_method
   type             = "AWS_PROXY"
   integration_http_method = "POST"
-  uri              = var.query_lambda_arn
+  uri              = var.query_lambda_invoke_arn
 }
 
 # Cognito Authorizer

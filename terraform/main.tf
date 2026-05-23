@@ -5,6 +5,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.4"
+    }
   }
 }
 
@@ -91,8 +95,9 @@ module "api_gateway" {
   project_name = var.project_name
   api_stage    = var.api_stage
   
-  query_lambda_arn       = module.lambda.query_lambda_arn
-  query_lambda_name      = module.lambda.query_lambda_name
+  query_lambda_arn        = module.lambda.query_lambda_arn
+  query_lambda_invoke_arn = module.lambda.query_lambda_invoke_arn
+  query_lambda_name       = module.lambda.query_lambda_name
   
   cognito_user_pool_id = module.cognito.user_pool_id
   cognito_user_pool_arn = module.cognito.user_pool_arn
