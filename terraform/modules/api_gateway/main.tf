@@ -95,10 +95,6 @@ resource "aws_api_gateway_stage" "main" {
   deployment_id = aws_api_gateway_deployment.main.id
   rest_api_id   = aws_api_gateway_rest_api.main.id
   stage_name    = var.api_stage
-
-  logging_level          = "INFO"
-  data_trace_enabled     = true
-  metrics_enabled        = true
 }
 
 # CloudWatch Log Group for API Gateway

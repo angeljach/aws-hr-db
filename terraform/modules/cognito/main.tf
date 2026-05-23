@@ -26,8 +26,7 @@ resource "aws_cognito_user_pool_client" "main" {
   user_pool_id    = aws_cognito_user_pool.main.id
   explicit_auth_flows = [
     "ALLOW_USER_PASSWORD_AUTH",
-    "ALLOW_REFRESH_TOKEN_AUTH",
-    "ALLOW_CLIENT_CREDENTIALS_AUTH"
+    "ALLOW_REFRESH_TOKEN_AUTH"
   ]
 
   allowed_oauth_flows  = ["code", "implicit"]
@@ -62,66 +61,60 @@ resource "aws_cognito_user_group" "premium" {
 
 # Users
 resource "aws_cognito_user" "admin" {
-  user_pool_id = aws_cognito_user_pool.main.id
-  username     = var.admin_user
-  password     = var.admin_password
-  
+  user_pool_id       = aws_cognito_user_pool.main.id
+  username           = var.admin_user
+  password           = var.admin_password
+
   attributes = {
     email          = var.admin_user
     email_verified = true
   }
 
-  temporary_password = var.admin_password
-
   depends_on = [aws_cognito_user_pool.main]
 }
 
-resource "aws_cognito_user_group_membership" "admin" {
+resource "aws_cognito_user_in_group" "admin" {
   user_pool_id = aws_cognito_user_pool.main.id
   username     = aws_cognito_user.admin.username
-  groups       = [aws_cognito_user_group.admin.name]
+  group_name   = aws_cognito_user_group.admin.name
 }
 
 resource "aws_cognito_user" "limited" {
-  user_pool_id = aws_cognito_user_pool.main.id
-  username     = var.limited_user
-  password     = var.limited_password
-  
+  user_pool_id       = aws_cognito_user_pool.main.id
+  username           = var.limited_user
+  password           = var.limited_password
+
   attributes = {
     email          = var.limited_user
     email_verified = true
   }
 
-  temporary_password = var.limited_password
-
   depends_on = [aws_cognito_user_pool.main]
 }
 
-resource "aws_cognito_user_group_membership" "limited" {
+resource "aws_cognito_user_in_group" "limited" {
   user_pool_id = aws_cognito_user_pool.main.id
   username     = aws_cognito_user.limited.username
-  groups       = [aws_cognito_user_group.limited.name]
+  group_name   = aws_cognito_user_group.limited.name
 }
 
 resource "aws_cognito_user" "premium" {
-  user_pool_id = aws_cognito_user_pool.main.id
-  username     = var.premium_user
-  password     = var.premium_password
-  
+  user_pool_id       = aws_cognito_user_pool.main.id
+  username           = var.premium_user
+  password           = var.premium_password
+
   attributes = {
     email          = var.premium_user
     email_verified = true
   }
 
-  temporary_password = var.premium_password
-
   depends_on = [aws_cognito_user_pool.main]
 }
 
-resource "aws_cognito_user_group_membership" "premium" {
+resource "aws_cognito_user_in_group" "premium" {
   user_pool_id = aws_cognito_user_pool.main.id
   username     = aws_cognito_user.premium.username
-  groups       = [aws_cognito_user_group.premium.name]
+  group_name   = aws_cognito_user_group.premium.name
 }
 
 data "aws_caller_identity" "current" {}
