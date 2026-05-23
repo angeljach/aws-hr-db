@@ -1,0 +1,31 @@
+# AWS HR Database Configuration Example
+# Copy this file to terraform/terraform.tfvars and update with your values
+
+aws_region   = "us-east-1"
+project_name = "aws-hr-db"
+environment  = "dev"
+
+# Database Configuration
+# IMPORTANT: Change in production!
+db_name     = "hrdb"
+db_user     = "hrdbadmin"
+db_password = "ChangeMe123!"
+
+# Encryption Key
+# Generate with: openssl rand -hex 32
+# IMPORTANT: Keep this secret and backup securely!
+encryption_key = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+# Cognito Users
+# IMPORTANT: Change default passwords!
+cognito_admin_user     = "admin@example.com"
+cognito_admin_password = "AdminPass123!"
+
+cognito_limited_user     = "limited@example.com"
+cognito_limited_password = "LimitedPass123!"
+
+cognito_premium_user     = "premium@example.com"
+cognito_premium_password = "PremiumPass123!"
+
+# API Configuration
+api_stage = "dev"

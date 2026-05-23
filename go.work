@@ -1,0 +1,4 @@
+go 1.21
+
+use ./lambda/extract_encrypt
+use ./lambda/query_decrypt

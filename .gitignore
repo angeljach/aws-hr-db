@@ -1,0 +1,43 @@
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.tfvars
+*.tfvars.json
+!terraform/terraform.tfvars.example
+
+# Lambda binaries
+lambda/*/bootstrap
+lambda/**/*.zip
+
+# Go build artifacts
+*.out
+*.exe
+*.dll
+*.so
+*.dylib
+bin/
+obj/
+
+# Logs
+*.log
+logs/
+
+# Responses
+response.json
