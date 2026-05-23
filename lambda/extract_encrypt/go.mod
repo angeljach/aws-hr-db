@@ -1,4 +1,4 @@
-module local.aws-hr-db
+module local.aws-hr-db/lambda/extract_encrypt
 
 go 1.21
 

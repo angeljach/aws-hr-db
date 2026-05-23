@@ -5,43 +5,29 @@
 set -e
 
 echo "Building Extract & Encrypt Lambda..."
-cd lambda/extract_encrypt
 
-# Download dependencies
-go mod download
-go mod tidy
-
-# Build for Amazon Linux 2
-GOOS=linux GOARCH=amd64 go build -o bootstrap main.go
+# Build from root using workspace (go build handles dependencies)
+GOOS=linux GOARCH=amd64 go build -C lambda/extract_encrypt -o bootstrap main.go
 
 # Verify the binary was created
-if [ ! -f bootstrap ]; then
-  echo "Error: bootstrap binary not created"
+if [ ! -f lambda/extract_encrypt/bootstrap ]; then
+  echo "Error: extract_encrypt bootstrap binary not created"
   exit 1
 fi
 
 echo "Extract Lambda built successfully"
 
-cd ../..
-
 echo "Building Query & Decrypt Lambda..."
-cd lambda/query_decrypt
 
-# Download dependencies
-go mod download
-go mod tidy
-
-# Build for Amazon Linux 2
-GOOS=linux GOARCH=amd64 go build -o bootstrap main.go
+# Build from root using workspace (go build handles dependencies)
+GOOS=linux GOARCH=amd64 go build -C lambda/query_decrypt -o bootstrap main.go
 
 # Verify the binary was created
-if [ ! -f bootstrap ]; then
-  echo "Error: bootstrap binary not created"
+if [ ! -f lambda/query_decrypt/bootstrap ]; then
+  echo "Error: query_decrypt bootstrap binary not created"
   exit 1
 fi
 
 echo "Query Lambda built successfully"
-
-cd ../..
 
 echo "All Lambda functions built successfully!"

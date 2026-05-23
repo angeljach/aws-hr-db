@@ -1,5 +1,4 @@
 package main
-package main
 
 import (
 	"context"
@@ -9,7 +8,6 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -86,13 +84,11 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 
 func extractUserRole(request events.APIGatewayProxyRequest) string {
 	// Try to extract from requestContext (Cognito groups)
-	if request.RequestContext.Authorizer != nil {
-		if auth, ok := request.RequestContext.Authorizer.(map[string]interface{}); ok {
-			if claims, ok := auth["claims"].(map[string]interface{}); ok {
-				if groups, ok := claims["cognito:groups"].([]interface{}); ok && len(groups) > 0 {
-					if group, ok := groups[0].(string); ok {
-						return group
-					}
+	if len(request.RequestContext.Authorizer) > 0 {
+		if claims, ok := request.RequestContext.Authorizer["claims"].(map[string]interface{}); ok {
+			if groups, ok := claims["cognito:groups"].([]interface{}); ok && len(groups) > 0 {
+				if group, ok := groups[0].(string); ok {
+					return group
 				}
 			}
 		}
