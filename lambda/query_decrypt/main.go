@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -87,12 +88,28 @@ func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events
 }
 
 func extractUserRole(request events.APIGatewayProxyRequest) string {
-	// Try to extract from requestContext (Cognito groups)
+	// Try to extract from requestContext (Cognito groups).
+	// API Gateway's Cognito authorizer flattens claim values to strings, so
+	// cognito:groups arrives as "admin" (single group) or "admin,premium"
+	// (multiple). When the claim is consumed elsewhere (custom authorizer,
+	// raw JWT) it may still be []interface{} — handle both.
 	if len(request.RequestContext.Authorizer) > 0 {
 		if claims, ok := request.RequestContext.Authorizer["claims"].(map[string]interface{}); ok {
-			if groups, ok := claims["cognito:groups"].([]interface{}); ok && len(groups) > 0 {
-				if group, ok := groups[0].(string); ok {
-					return group
+			switch v := claims["cognito:groups"].(type) {
+			case string:
+				if v != "" {
+					// Trim "[ ... ]" if Cognito serialized as a JSON-ish string.
+					trimmed := strings.Trim(v, "[]")
+					if first, _, found := strings.Cut(trimmed, ","); found {
+						return strings.TrimSpace(first)
+					}
+					return strings.TrimSpace(trimmed)
+				}
+			case []interface{}:
+				if len(v) > 0 {
+					if group, ok := v[0].(string); ok {
+						return group
+					}
 				}
 			}
 		}
