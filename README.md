@@ -135,43 +135,59 @@ scripts/invoke-extract.sh aws-hr-db-extract us-east-1
 
 #### Obtener token Cognito
 
+El script `scripts/get_cognito_token.sh` usa `aws cognito-idp initiate-auth` con el flow `USER_PASSWORD_AUTH` y devuelve el **IdToken** (es el que valida el authorizer de API Gateway y contiene el claim `cognito:groups` que la Lambda usa para el role-based access).
+
+> Nota: el endpoint OAuth2 `/oauth2/token` de Cognito **no soporta** `grant_type=password` — por eso usamos la API `cognito-idp` directamente.
+
 ```bash
-# Reemplaza valores con tus datos
-COGNITO_DOMAIN="aws-hr-db-ACCOUNT_ID.auth.us-east-1.amazoncognito.com"
-CLIENT_ID="<tu_client_id>"
+# Tomar el CLIENT_ID desde los outputs de Terraform
+CLIENT_ID=$(cd terraform && terraform output -raw cognito_client_id)
+
+# Credenciales del usuario de prueba (deben coincidir con terraform.tfvars)
 USERNAME="admin@example.com"
 PASSWORD="AdminPass123!"
 
-# Obtener token
-TOKEN=$(curl -s -X POST "https://$COGNITO_DOMAIN/oauth2/token" \
-  --data-urlencode "grant_type=password" \
-  --data-urlencode "client_id=$CLIENT_ID" \
-  --data-urlencode "username=$USERNAME" \
-  --data-urlencode "password=$PASSWORD" \
-  -H "Content-Type: application/x-www-form-urlencoded" | jq -r '.access_token')
+# Obtener el ID token
+TOKEN=$(scripts/get_cognito_token.sh "$CLIENT_ID" "$USERNAME" "$PASSWORD")
 
-echo "Token: $TOKEN"
+echo "Token: ${TOKEN:0:40}..."   # debería verse "eyJraWQiOiI..."
 ```
 
-#### Listar empleados (paginación)
+Atajo para imprimir la firma con tu CLIENT_ID ya resuelto:
 
 ```bash
-API_URL="https://your-api-gateway-url/dev"
-
-# GET /employees (página 1, 10 por página)
-curl -X GET "$API_URL/employees?page=1&limit=10" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json"
+make get-token
 ```
 
-#### Obtener empleado específico
+**Firma del script:** `scripts/get_cognito_token.sh <CLIENT_ID> <USERNAME> <PASSWORD> [REGION]`
+(Region por defecto: `us-east-1`.)
+
+#### Llamar al API
 
 ```bash
-# GET /employees/1
-curl -X GET "$API_URL/employees/1" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json"
+# URL del API Gateway desde los outputs de Terraform
+API_URL=$(cd terraform && terraform output -raw api_gateway_url)
+
+# GET /employees — listado paginado
+curl -sS "$API_URL/employees?page=1&limit=10" \
+  -H "Authorization: Bearer $TOKEN" | jq
+
+# GET /employees/{id} — un empleado específico
+curl -sS "$API_URL/employees/1" \
+  -H "Authorization: Bearer $TOKEN" | jq
 ```
+
+Los campos en la respuesta dependen del grupo Cognito del usuario (admin / premium / limited). Si quieres ver la diferencia, repite con otro usuario:
+
+```bash
+TOKEN=$(scripts/get_cognito_token.sh "$CLIENT_ID" "limited@example.com" "LimitedPass123!")
+curl -sS "$API_URL/employees/1" -H "Authorization: Bearer $TOKEN" | jq
+```
+
+**Errores comunes:**
+- `{"message":"Unauthorized"}` → token expirado (1h por default) o IdToken inválido. Regenéralo.
+- `{"message":"Missing Authentication Token"}` → la URL es incorrecta (ruta o método que API Gateway no tiene mapeado).
+- HTTP 500 desde la Lambda → `aws logs tail /aws/lambda/aws-hr-db-query --follow` para ver el detalle.
 
 ---
 
