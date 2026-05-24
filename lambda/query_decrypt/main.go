@@ -23,9 +23,12 @@ type Employee struct {
 	Email      string `json:"email"`
 	Department string `json:"department"`
 	HireDate   string `json:"hire_date"`
-	Phone      *string `json:"phone,omitempty"`
-	Address    *string `json:"address,omitempty"`
-	Salary     *string `json:"salary,omitempty"`
+	// Pointer types serialize to null when nil. omitempty is intentionally NOT
+	// set: the response contract is stable across roles — unauthorized fields
+	// arrive as `null` instead of being absent. See TODO.md (API contract).
+	Phone   *string `json:"phone"`
+	Address *string `json:"address"`
+	Salary  *string `json:"salary"`
 }
 
 type QueryResponse struct {

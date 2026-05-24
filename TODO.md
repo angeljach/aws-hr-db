@@ -129,6 +129,74 @@ Cada invocación abre y cierra una conexión a RDS (`connectDB()` + `defer db.Cl
 
 ---
 
+## Diseño del API / Contrato
+
+### [P2] Spec OpenAPI 3.x del API (con `x-required-role` por campo)
+Hoy no hay spec formal. La documentación viva en `README.md` y `CLAUDE.md` se desincroniza con el código en cuanto cambia algo. Sin spec no hay generación de SDK (TypeScript, Python, Go), no hay validación request/response automatizada en CI, no hay mock server para frontends, y los consumers (humanos o servicios) tienen que leer el código Go para saber qué esperar.
+
+**Por qué ahora importa (no antes):**
+- El contrato se acaba de estabilizar — todos los roles reciben el mismo shape, los campos sin permiso vienen como `null`. Ese contrato vale más documentado.
+- Si vas a abrir el API a consumers reales (Client Credentials, ver P0 de Auth en este mismo TODO), un consumer integra mucho más rápido contra un OpenAPI que contra un README.
+
+**Fix mínimo:**
+- Crear `openapi/spec.yaml` (OpenAPI 3.1) con los 2 endpoints, sus query params, y los schemas `Employee`, `QueryResponse`, `ErrorResponse`.
+- Documentar el `securityScheme` Cognito (bearer JWT) referenciando el authorizer.
+- Marcar **cada campo sensible** con la extensión `x-required-role`:
+  ```yaml
+  Employee:
+    properties:
+      first_name: { type: string }
+      phone:
+        type: string
+        nullable: true
+        x-required-role: premium       # null si el rol del caller no aplica
+        description: "null when caller's role lacks permission"
+      address:
+        type: string
+        nullable: true
+        x-required-role: admin
+      salary:
+        type: string
+        nullable: true
+        x-required-role: admin
+  ```
+- `x-required-role` no es estándar OpenAPI pero **es la convención** para extensiones (cualquier campo `x-*` es válido). Sirve como documentación + base para generar matrices de permisos o checks de policy automáticos.
+
+**Pasos para que no se desincronice:**
+- Generar tipos Go desde la spec con `oapi-codegen` (o lo opuesto: derivar la spec de structs Go anotados). En esta etapa de POC, mantener la spec a mano es razonable; cuando crezca, considerar codegen bidireccional.
+- CI: validar que la spec es válida (`spectral lint`), idealmente que las responses reales en tests de integración matchean la spec (`prism` o similar).
+- Publicar la spec en Swagger UI o Redoc para que los consumers la naveguen.
+
+**Herramientas recomendadas:**
+- `oapi-codegen` (Go) para generar handlers/types tipados desde la spec.
+- `spectral` para linting.
+- `redocly-cli` o `swagger-ui-express` para servir docs interactivos.
+- En API Gateway, se puede importar la spec con `aws_api_gateway_rest_api.body` y declarar las rutas/integrations desde ahí — eso convierte la spec en source-of-truth incluso para infra.
+
+### [P3] Señalización explícita de campos redactados (nivel 2)
+Hoy un campo `null` en la respuesta es ambiguo: puede significar "no tienes permiso para verlo" o "el valor genuinamente está vacío en la BD". Para los campos actuales (`phone`, `address`, `salary`) son obligatorios al insert, así que `null` = redacted. Pero conforme el modelo crezca, esa convención se quiebra.
+
+**Fix:** agregar un bloque `_meta` a las respuestas que liste explícitamente los campos redactados y el rol del caller:
+
+```json
+{
+  "employees": [
+    {"first_name": "Juan", "phone": null, "address": null, "salary": null}
+  ],
+  "_meta": {
+    "role": "limited",
+    "redacted_fields": ["phone", "address", "salary"]
+  },
+  "page": 1, "limit": 10, "total": 20, "status_code": 200
+}
+```
+
+Beneficio: el cliente distingue redacción de ausencia sin ambigüedad — equivalente a lo que GraphQL hace nativamente con `errors[]` por field. Documentar el campo `_meta` en la spec OpenAPI del item anterior.
+
+**Cuándo escalar la prioridad:** cuando aparezca el primer campo donde `null` pueda ser ambiguo (ej. `termination_date` que es null para empleados activos), o cuando un consumer externo lo pida.
+
+---
+
 ## Operaciones / CI/CD
 
 ### [P1] Sin pipeline de CI/CD
