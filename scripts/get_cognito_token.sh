@@ -1,30 +1,30 @@
 #!/bin/bash
 
-# Helper script to get Cognito tokens
+# Helper script to get a Cognito ID token via the cognito-idp InitiateAuth API.
+# Cognito's /oauth2/token endpoint does NOT support grant_type=password, so we
+# use USER_PASSWORD_AUTH directly (already enabled in explicit_auth_flows).
+# Prints the IdToken to stdout — that's what the API Gateway Cognito User Pool
+# authorizer validates and where the cognito:groups claim lives.
 
-COGNITO_DOMAIN="${1}"
-CLIENT_ID="${2}"
-USERNAME="${3}"
-PASSWORD="${4}"
-REGION="${5:-us-east-1}"
+CLIENT_ID="${1}"
+USERNAME="${2}"
+PASSWORD="${3}"
+REGION="${4:-us-east-1}"
 
-if [ -z "$COGNITO_DOMAIN" ] || [ -z "$CLIENT_ID" ] || [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
-    echo "Usage: $0 <COGNITO_DOMAIN> <CLIENT_ID> <USERNAME> <PASSWORD> [REGION]"
-    echo ""
-    echo "Example:"
-    echo "$0 mydomain.auth.us-east-1.amazoncognito.com abc123xyz admin@example.com Password123!"
+if [ -z "$CLIENT_ID" ] || [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
+    echo "Usage: $0 <CLIENT_ID> <USERNAME> <PASSWORD> [REGION]" >&2
+    echo "" >&2
+    echo "Example:" >&2
+    echo "  $0 581u45n6i37jq65mo80bodj0v7 admin@example.com Password123!" >&2
+    echo "" >&2
+    echo "Tip: export TOKEN=\$($0 <CLIENT_ID> <USER> <PASS>)" >&2
     exit 1
 fi
 
-echo "Getting token from Cognito..."
-echo "Domain: $COGNITO_DOMAIN"
-echo "Client ID: $CLIENT_ID"
-echo "Username: $USERNAME"
-
-curl -X POST "https://$COGNITO_DOMAIN/oauth2/token" \
-  --data-urlencode "grant_type=password" \
-  --data-urlencode "client_id=$CLIENT_ID" \
-  --data-urlencode "username=$USERNAME" \
-  --data-urlencode "password=$PASSWORD" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -v
+aws cognito-idp initiate-auth \
+  --region "$REGION" \
+  --auth-flow USER_PASSWORD_AUTH \
+  --client-id "$CLIENT_ID" \
+  --auth-parameters USERNAME="$USERNAME",PASSWORD="$PASSWORD" \
+  --query 'AuthenticationResult.IdToken' \
+  --output text

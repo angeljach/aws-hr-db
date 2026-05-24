@@ -70,6 +70,6 @@ show-outputs:
 	@cd terraform && terraform output
 
 get-token:
-	@echo "To get a Cognito token, run:"
-	@COGNITO_DOMAIN=$$(cd terraform && terraform output -raw cognito_domain 2>/dev/null || echo "COGNITO_DOMAIN"); \
-	echo "scripts/get_cognito_token.sh $$COGNITO_DOMAIN <CLIENT_ID> <USERNAME> <PASSWORD>"
+	@echo "To get a Cognito ID token, run:"
+	@CLIENT_ID=$$(cd terraform && terraform output -raw cognito_client_id 2>/dev/null || echo "CLIENT_ID"); \
+	echo "scripts/get_cognito_token.sh $$CLIENT_ID <USERNAME> <PASSWORD>"

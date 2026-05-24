@@ -167,10 +167,12 @@ Extract Lambda (insert dummy data):
 make invoke-extract
 ```
 
-Query Lambda requires Cognito token. Get one via:
+Query Lambda requires a Cognito ID token. Get one via:
 ```bash
-scripts/get_cognito_token.sh <COGNITO_DOMAIN> <CLIENT_ID> <USERNAME> <PASSWORD>
+TOKEN=$(scripts/get_cognito_token.sh <CLIENT_ID> <USERNAME> <PASSWORD>)
 ```
+
+The script calls `cognito-idp:InitiateAuth` with `USER_PASSWORD_AUTH` and returns the **IdToken** — not the AccessToken. The API Gateway Cognito User Pool authorizer validates ID tokens, and the `cognito:groups` claim used for role-based access lives there.
 
 Then call API:
 ```bash
