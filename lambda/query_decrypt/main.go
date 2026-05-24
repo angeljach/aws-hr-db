@@ -52,7 +52,11 @@ var roleAccess = map[string][]string{
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	log.Printf("Received request: %v", request)
+	// Never log request.Headers or request.MultiValueHeaders — they contain the
+	// Authorization bearer token, which CloudWatch readers could replay.
+	log.Printf("Received request: method=%s path=%s query=%v user=%s requestId=%s",
+		request.HTTPMethod, request.Path, request.QueryStringParameters,
+		extractUsername(request), request.RequestContext.RequestID)
 
 	// Extract user role from Cognito claims
 	userRole := extractUserRole(request)
@@ -94,6 +98,17 @@ func extractUserRole(request events.APIGatewayProxyRequest) string {
 		}
 	}
 	return ""
+}
+
+func extractUsername(request events.APIGatewayProxyRequest) string {
+	if len(request.RequestContext.Authorizer) > 0 {
+		if claims, ok := request.RequestContext.Authorizer["claims"].(map[string]interface{}); ok {
+			if username, ok := claims["cognito:username"].(string); ok {
+				return username
+			}
+		}
+	}
+	return "anonymous"
 }
 
 func handleListEmployees(db *sql.DB, request events.APIGatewayProxyRequest, userRole, encryptionKey string) (events.APIGatewayProxyResponse, error) {
@@ -275,7 +290,7 @@ func connectDB() (*sql.DB, error) {
 	dbUser := os.Getenv("DB_USER")
 	dbPassword := os.Getenv("DB_PASSWORD")
 
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=require",
 		dbUser, dbPassword, dbHost, dbPort, dbName)
 
 	db, err := sql.Open("postgres", connStr)

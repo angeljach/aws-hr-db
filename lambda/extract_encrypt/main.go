@@ -93,7 +93,7 @@ func connectDB() (*sql.DB, error) {
 	dbUser := os.Getenv("DB_USER")
 	dbPassword := os.Getenv("DB_PASSWORD")
 
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=require",
 		dbUser, dbPassword, dbHost, dbPort, dbName)
 
 	db, err := sql.Open("postgres", connStr)

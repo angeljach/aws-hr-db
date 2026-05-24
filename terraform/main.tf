@@ -65,7 +65,7 @@ module "lambda" {
   private_subnet_ids    = module.vpc.private_subnet_ids
   lambda_security_group = module.vpc.lambda_security_group_id
   
-  db_host      = module.rds.db_endpoint
+  db_host      = module.rds.db_address
   db_name      = var.db_name
   db_user      = var.db_user
   db_password  = var.db_password
