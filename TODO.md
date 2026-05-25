@@ -141,6 +141,7 @@ Hoy no hay spec formal. La documentación viva en `README.md` y `CLAUDE.md` se d
 **Fix mínimo:**
 - Crear `openapi/spec.yaml` (OpenAPI 3.1) con los 2 endpoints, sus query params, y los schemas `Employee`, `QueryResponse`, `ErrorResponse`.
 - Documentar el `securityScheme` Cognito (bearer JWT) referenciando el authorizer.
+- Documentar el campo `_meta` (`role`, `redacted_fields`) que ambos endpoints ya devuelven, y su semántica (`null` = redactado si el campo está en `redacted_fields`, o genuinamente vacío en caso contrario).
 - Marcar **cada campo sensible** con la extensión `x-required-role`:
   ```yaml
   Employee:
@@ -172,28 +173,6 @@ Hoy no hay spec formal. La documentación viva en `README.md` y `CLAUDE.md` se d
 - `spectral` para linting.
 - `redocly-cli` o `swagger-ui-express` para servir docs interactivos.
 - En API Gateway, se puede importar la spec con `aws_api_gateway_rest_api.body` y declarar las rutas/integrations desde ahí — eso convierte la spec en source-of-truth incluso para infra.
-
-### [P3] Señalización explícita de campos redactados (nivel 2)
-Hoy un campo `null` en la respuesta es ambiguo: puede significar "no tienes permiso para verlo" o "el valor genuinamente está vacío en la BD". Para los campos actuales (`phone`, `address`, `salary`) son obligatorios al insert, así que `null` = redacted. Pero conforme el modelo crezca, esa convención se quiebra.
-
-**Fix:** agregar un bloque `_meta` a las respuestas que liste explícitamente los campos redactados y el rol del caller:
-
-```json
-{
-  "employees": [
-    {"first_name": "Juan", "phone": null, "address": null, "salary": null}
-  ],
-  "_meta": {
-    "role": "limited",
-    "redacted_fields": ["phone", "address", "salary"]
-  },
-  "page": 1, "limit": 10, "total": 20, "status_code": 200
-}
-```
-
-Beneficio: el cliente distingue redacción de ausencia sin ambigüedad — equivalente a lo que GraphQL hace nativamente con `errors[]` por field. Documentar el campo `_meta` en la spec OpenAPI del item anterior.
-
-**Cuándo escalar la prioridad:** cuando aparezca el primer campo donde `null` pueda ser ambiguo (ej. `termination_date` que es null para empleados activos), o cuando un consumer externo lo pida.
 
 ---
 

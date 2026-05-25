@@ -32,11 +32,20 @@ type Employee struct {
 }
 
 type QueryResponse struct {
-	Employees  []Employee `json:"employees"`
-	Page       int        `json:"page"`
-	Limit      int        `json:"limit"`
-	Total      int        `json:"total"`
-	StatusCode int        `json:"status_code"`
+	Employees  []Employee   `json:"employees"`
+	Meta       ResponseMeta `json:"_meta"`
+	Page       int          `json:"page"`
+	Limit      int          `json:"limit"`
+	Total      int          `json:"total"`
+	StatusCode int          `json:"status_code"`
+}
+
+// ResponseMeta tells the caller which sensitive fields were redacted for their
+// role, so they can distinguish "field is null because you can't see it" from
+// "field is null because it's genuinely empty".
+type ResponseMeta struct {
+	Role           string   `json:"role"`
+	RedactedFields []string `json:"redacted_fields"`
 }
 
 type ErrorResponse struct {
@@ -53,6 +62,21 @@ var roleAccess = map[string][]string{
 	"admin": {"employee_id", "first_name", "last_name", "email", "department", "hire_date", "phone", "address", "salary"},
 	"limited": {"employee_id", "first_name", "last_name", "email", "department", "hire_date"},
 	"premium": {"employee_id", "first_name", "last_name", "email", "department", "hire_date", "phone"},
+}
+
+// sensitiveFields drives redacted_fields computation in ResponseMeta. Keep in
+// sync with the nullable, role-gated fields on Employee.
+var sensitiveFields = []string{"phone", "address", "salary"}
+
+func buildMeta(userRole string) ResponseMeta {
+	allowed := roleAccess[userRole]
+	redacted := make([]string, 0, len(sensitiveFields))
+	for _, f := range sensitiveFields {
+		if !contains(allowed, f) {
+			redacted = append(redacted, f)
+		}
+	}
+	return ResponseMeta{Role: userRole, RedactedFields: redacted}
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -217,6 +241,7 @@ func handleListEmployees(db *sql.DB, request events.APIGatewayProxyRequest, user
 
 	response := QueryResponse{
 		Employees:  employees,
+		Meta:       buildMeta(userRole),
 		Page:       page,
 		Limit:      limit,
 		Total:      total,
@@ -290,6 +315,7 @@ func handleGetEmployee(db *sql.DB, idStr, userRole, encryptionKey string) (event
 
 	response := map[string]interface{}{
 		"employee":    emp,
+		"_meta":       buildMeta(userRole),
 		"status_code": 200,
 	}
 
