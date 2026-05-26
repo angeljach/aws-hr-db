@@ -42,5 +42,5 @@ variable "encryption_key" {
 
 variable "lambda_runtime" {
   type    = string
-  default = "provided.al2"
+  default = "provided.al2023"
 }

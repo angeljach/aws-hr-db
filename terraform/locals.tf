@@ -5,7 +5,7 @@ locals {
     ManagedBy   = "Terraform"
   }
 
-  lambda_runtime = "provided.al2"  # For Go runtime
+  lambda_runtime = "provided.al2023"  # For Go runtime (Amazon Linux 2023)
   
   # Sensitive fields for encryption
   sensitive_fields = [
