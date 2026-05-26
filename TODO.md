@@ -135,30 +135,28 @@ Cada invocación abre y cierra una conexión a RDS (`connectDB()` + `defer db.Cl
 Hoy no hay spec formal. La documentación viva en `README.md` y `CLAUDE.md` se desincroniza con el código en cuanto cambia algo. Sin spec no hay generación de SDK (TypeScript, Python, Go), no hay validación request/response automatizada en CI, no hay mock server para frontends, y los consumers (humanos o servicios) tienen que leer el código Go para saber qué esperar.
 
 **Por qué ahora importa (no antes):**
-- El contrato se acaba de estabilizar — todos los roles reciben el mismo shape, los campos sin permiso vienen como `null`. Ese contrato vale más documentado.
+- El contrato se acaba de estabilizar — las responses ahora omiten completamente los campos que el usuario no tiene permiso de ver (en lugar de enviarlos como `null`). Ver ADR-001 en `README.md`.
 - Si vas a abrir el API a consumers reales (Client Credentials, ver P0 de Auth en este mismo TODO), un consumer integra mucho más rápido contra un OpenAPI que contra un README.
 
 **Fix mínimo:**
 - Crear `openapi/spec.yaml` (OpenAPI 3.1) con los 2 endpoints, sus query params, y los schemas `Employee`, `QueryResponse`, `ErrorResponse`.
 - Documentar el `securityScheme` Cognito (bearer JWT) referenciando el authorizer.
-- Documentar el campo `_meta` (`role`, `redacted_fields`) que ambos endpoints ya devuelven, y su semántica (`null` = redactado si el campo está en `redacted_fields`, o genuinamente vacío en caso contrario).
-- Marcar **cada campo sensible** con la extensión `x-required-role`:
+- Documentar el campo `_meta` (`role`) que ambos endpoints devuelven.
+- Marcar **cada campo sensible** como **no requerido** (not in `required`) y documentar con `x-required-role`:
   ```yaml
   Employee:
+    required: [employee_id, first_name, last_name, email, department, hire_date]
     properties:
       first_name: { type: string }
       phone:
         type: string
-        nullable: true
-        x-required-role: premium       # null si el rol del caller no aplica
-        description: "null when caller's role lacks permission"
+        x-required-role: premium       # Omitted si el rol del caller no aplica
+        description: "Only present if caller's role has access"
       address:
         type: string
-        nullable: true
         x-required-role: admin
       salary:
         type: string
-        nullable: true
         x-required-role: admin
   ```
 - `x-required-role` no es estándar OpenAPI pero **es la convención** para extensiones (cualquier campo `x-*` es válido). Sirve como documentación + base para generar matrices de permisos o checks de policy automáticos.

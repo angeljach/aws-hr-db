@@ -23,12 +23,9 @@ type Employee struct {
 	Email      string `json:"email"`
 	Department string `json:"department"`
 	HireDate   string `json:"hire_date"`
-	// Pointer types serialize to null when nil. omitempty is intentionally NOT
-	// set: the response contract is stable across roles — unauthorized fields
-	// arrive as `null` instead of being absent. See TODO.md (API contract).
-	Phone   *string `json:"phone"`
-	Address *string `json:"address"`
-	Salary  *string `json:"salary"`
+	Phone      *string `json:"phone,omitempty"`
+	Address    *string `json:"address,omitempty"`
+	Salary     *string `json:"salary,omitempty"`
 }
 
 type QueryResponse struct {
@@ -40,12 +37,8 @@ type QueryResponse struct {
 	StatusCode int          `json:"status_code"`
 }
 
-// ResponseMeta tells the caller which sensitive fields were redacted for their
-// role, so they can distinguish "field is null because you can't see it" from
-// "field is null because it's genuinely empty".
 type ResponseMeta struct {
-	Role           string   `json:"role"`
-	RedactedFields []string `json:"redacted_fields"`
+	Role string `json:"role"`
 }
 
 type ErrorResponse struct {
@@ -64,19 +57,8 @@ var roleAccess = map[string][]string{
 	"premium": {"employee_id", "first_name", "last_name", "email", "department", "hire_date", "phone"},
 }
 
-// sensitiveFields drives redacted_fields computation in ResponseMeta. Keep in
-// sync with the nullable, role-gated fields on Employee.
-var sensitiveFields = []string{"phone", "address", "salary"}
-
 func buildMeta(userRole string) ResponseMeta {
-	allowed := roleAccess[userRole]
-	redacted := make([]string, 0, len(sensitiveFields))
-	for _, f := range sensitiveFields {
-		if !contains(allowed, f) {
-			redacted = append(redacted, f)
-		}
-	}
-	return ResponseMeta{Role: userRole, RedactedFields: redacted}
+	return ResponseMeta{Role: userRole}
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {

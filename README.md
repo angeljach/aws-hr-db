@@ -193,6 +193,8 @@ curl -sS "$API_URL/employees/1" -H "Authorization: Bearer $TOKEN" | jq
 
 ## Roles de Acceso
 
+La respuesta JSON incluye solo los campos que el rol del usuario tiene permiso para ver. Los campos no autorizados se omiten completamente (no aparecen en la respuesta, ni como `null`).
+
 ### Admin (acceso completo)
 ```json
 {
@@ -202,9 +204,9 @@ curl -sS "$API_URL/employees/1" -H "Authorization: Bearer $TOKEN" | jq
   "email": "juan.garcia@company.com",
   "department": "Engineering",
   "hire_date": "2020-01-15",
-  "phone": "555-0101",          // ✅ Visible
-  "address": "123 Main St",     // ✅ Visible
-  "salary": "75000"             // ✅ Visible
+  "phone": "555-0101",
+  "address": "123 Main St",
+  "salary": "75000"
 }
 ```
 
@@ -216,10 +218,7 @@ curl -sS "$API_URL/employees/1" -H "Authorization: Bearer $TOKEN" | jq
   "last_name": "García",
   "email": "juan.garcia@company.com",
   "department": "Engineering",
-  "hire_date": "2020-01-15",
-  "phone": null,                // ❌ Oculto
-  "address": null,              // ❌ Oculto
-  "salary": null                // ❌ Oculto
+  "hire_date": "2020-01-15"
 }
 ```
 
@@ -232,11 +231,39 @@ curl -sS "$API_URL/employees/1" -H "Authorization: Bearer $TOKEN" | jq
   "email": "juan.garcia@company.com",
   "department": "Engineering",
   "hire_date": "2020-01-15",
-  "phone": "555-0101",          // ✅ Visible
-  "address": null,              // ❌ Oculto
-  "salary": null                // ❌ Oculto
+  "phone": "555-0101"
 }
 ```
+
+---
+
+## Decisiones Arquitectónicas (ADRs)
+
+### ADR-001: Omitir campos no autorizados en lugar de enviarlos como null
+
+**Problema**: El contrato de API debe ser consistente y evitar ambigüedades entre "campo no permitido para este rol" y "campo vacío/null en los datos".
+
+**Decisión**: Los campos sensibles que el usuario no tiene permiso de ver se omiten completamente de la respuesta JSON (usando `omitempty`), en lugar de enviarlos como `null`.
+
+**Justificación**:
+- **Claridad de contrato**: El cliente siempre recibe la misma respuesta del servidor para un empleado; la diferencia está en qué campos ve cada rol.
+- **Simplicidad para consumers**: Un cliente JSON no necesita verificar `_meta.redacted_fields` para saber si un campo está oculto; simplemente chequea si la propiedad existe.
+- **Mejor experiencia para clientes de API**: Especialmente importante cuando hay diferentes tipos de clientes (web, mobile, third-party integrations) — todos usan la misma estructura con campos opcionales omitidos.
+- **Estándar de la industria**: APIs como Stripe, GitHub, y otros omiten campos sensibles en lugar de enviarlos como null.
+
+**Trade-offs**:
+- Los schemas OpenAPI deben marcar estos campos como `nullable: true, not: required` para que los clients sepan que podrían no estar presentes.
+- Los clients deben usar `?.` (optional chaining) en lenguajes modernos o chequeos nulos antes de acceder.
+
+**Alternativas rechazadas**:
+1. Enviar `null` para campos no autorizados (anterior design) — requería `_meta.redacted_fields` para distinguir "no permitido" de "genuinamente null".
+2. Errores 403 por campo — demasiado granular, requería múltiples requests.
+3. Roles específicos en el token JWT — más complejo de maintener que el modelo actual de grupos Cognito.
+
+**Impacto**:
+- Código: `Employee` struct ahora usa `omitempty` en campos sensibles.
+- Documentación: Responses en `README.md` y OpenAPI spec reflejan los campos reales por rol.
+- Testing: Validar que los JSON responses no incluyen claves de campos no permitidos.
 
 ---
 

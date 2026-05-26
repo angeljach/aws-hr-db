@@ -104,6 +104,9 @@ var roleAccess = map[string][]string{
 }
 ```
 
+**API Response Contract**:
+Fields that a user's role does not have permission to access are completely omitted from the JSON response (using `omitempty` on pointer fields). This differs from the older pattern of returning `null` for unauthorized fields. See ADR-001 in README.md for the design rationale.
+
 **Key Environment Variables**:
 - `ENCRYPTION_KEY` - For decryption
 - Same database connection variables as extract function
